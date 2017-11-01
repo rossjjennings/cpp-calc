@@ -1,57 +1,83 @@
 #include <iostream>
 #include <list>
+#include <stack>
+#include <queue>
+#include <cmath>
+#include <optional>
 using std::string;
+
+double add(double augend, double addend) { return augend + addend; }
+double subtract(double minuend, double subtrahend) { return minuend - subtrahend; }
+double multiply(double multiplier, double multiplicand) { return multiplier * multiplicand; }
+double divide(double dividend, double divisor) { return dividend / divisor; }
+double negate(double argument) { return -argument; }
+double exponentiate(double base, double exponent) { return std::pow(base, exponent); }
 
 struct node
 {
-    virtual double evaluate() = 0;
+    virtual double evaluate() const = 0;
 };
 
 struct syntax_tree
 {
-    node root;
+    const node &root;
+    
+    syntax_tree(const node &root): root(root) {}
 };
 
-struct op { int prec; };
+struct op 
+{
+    const int prec;
+    
+    op(int prec): prec(prec) {}
+};
 
-struct unary_op : op { double (*function)(double arg); };
+struct unary_op : op 
+{
+    double (&function)(double);
+    
+    unary_op(int prec, double (*func_ptr)(double)):
+     op(prec), function(*func_ptr) {}
+};
 
 struct binary_op : op 
 {
-    bool right_assoc;
-    double (*function)(double left_arg, double right_arg);
+    const bool right_assoc;
+    double (&function)(double, double);
+    
+    binary_op(int prec, bool right_assoc, double (*func_ptr)(double, double)):
+     op(prec), right_assoc(right_assoc), function(*func_ptr) {}
 };
 
 struct unary : node
 {
-    unary_op &uop;
-    node operand;
-    double evaluate()
-    { return op->function(operand.evaluate()); }
+    const unary_op &uop;
+    const node &operand;
+    double evaluate() const
+    { return uop.function(operand.evaluate()); }
 
-    unary::unary(unary_op uop, node operand)
-    {
-    }
+    unary(const unary_op &uop, const node &operand):
+     uop(uop), operand(operand) {}
 };
 
 struct binary : node
 {
-    binary_op &bop;
-    node left_operand;
-    node right_operand;
-    double evaluate() 
-    { return op->function(left_operand.evaluate(), right_operand.evaluate()); }
-    
+    const binary_op &bop;
+    const node &left_operand;
+    const node &right_operand;
+    double evaluate() const
+    { return bop.function(left_operand.evaluate(), right_operand.evaluate()); }
 
-    binary(binary_op bop, node left_operand, node right_operand)
-    {
-    }
+    binary(const binary_op &bop, const node &left_operand, const node &right_operand):
+     left_operand(left_operand), right_operand(right_operand) {}
 };
 
 struct number : node
 {
-    double value;
-    double evaluate() { return value; }
+    const double value;
+    double evaluate() const { return value; }
+    
+    number(double value): value(value) {}
 };
 
 enum class charcat { digit, dot, op, space, paren, other };
@@ -69,121 +95,91 @@ charcat categorize(char c)
     else return charcat::other;
 }
 
-std::list<token> tokenize(string str)
+node parse_expression(std::queue<char> &chars, std::stack<op> &ops, std::queue<node> &nodes, int prec)
 {
-    std::list<token> tokens;
-    tokenkind state = tokenkind::none;
-    string cur_content;
-    charcat cat;
+    node cur_node = parse_atom(chars, ops, nodes);
     
-    for(int i = 0; i < str.length(); )
-    {
-        char c = str[i];
-        cat = categorize(c);
-        switch(state)
-        {
-            case tokenkind::num:
-                if(cat == charcat::digit || cat == charcat::dot)
-                {
-                    cur_content += c;
-                    i++;
-                }
-                else
-                {
-                    tokens.push_back(token{state, cur_content});
-                    cur_content = string();
-                    if(cat == charcat::op || cat == charcat::paren)
-                        state = tokenkind::op;
-                    else if(cat == charcat::other) state = tokenkind::word;
-                    else if(cat == charcat::space) state = tokenkind::none;
-                }
-                break;
-            case tokenkind::word:
-                if(cat == charcat::other || cat == charcat::digit || cat == charcat::dot)
-                {
-                    cur_content += c;
-                    i++;
-                }
-                else
-                {
-                    tokens.push_back(token{state, cur_content});
-                    cur_content = string();
-                    if(cat == charcat::op || cat == charcat::paren)
-                        state = tokenkind::op;
-                    else if(cat == charcat::space) state = tokenkind::none;
-                }
-                break;
-            case tokenkind::op:
-                if(cur_content.length() > 0)
-                {
-                    tokens.push_back(token{state, cur_content});
-                    cur_content = string();
-                }
-                if(cat != charcat::op && cat != charcat::paren)
-                {
-                    state = tokenkind::none;
-                    break;
-                }
-                cur_content += c;
-                i++;
-                break;
-            case tokenkind::none:
-                if(cat == charcat::space) i++;
-                else if(cat == charcat::digit || cat == charcat::dot)
-                    state = tokenkind::num;
-                else if(cat == charcat::op || cat == charcat::paren)
-                    state = tokenkind::op;
-                else if(cat == charcat::other)
-                    state = tokenkind::word;
-                break;
-        }
-    }
-    
-    tokens.push_back(token{state, cur_content});
-    return tokens;
-}
-
-node parse_expression(std::deque<char> &deq, int prec)
-{
-    node cur_node = parse_atom(str);
-    
+    op tmp;
     binary_op bop;
-    do
+    for(binary_op bop; bop = parse_op(chars); bop.prec >= prec)
     {
-        bop = parse_op(deq);
         node expression = 
           parse_expression(bop.right_assoc ? bop.prec : bop.prec + 1)
         cur_node = binary(bop, cur_node, expression)
     }
-    while(cur_op.prec >= prec)
     
     return cur_node;
 }
 
-node parse_atom(std::deque<char> &deq)
+node parse_atom(std::queue<char> &chars, std::stack<op> &ops, std::queue<node> &nodes)
+{
+    if next is a unary operator
+         op = unary(next)
+         consume
+         q = prec( op )
+         t = parse_expression( q )
+         return mkNode( op, t )
+    else if next = "("
+         consume
+         t = parse_expression( 0 )
+         expect ")"
+         return t
+    else if next is a v
+         t = mkLeaf( next )
+         consume
+         return t
+    else
+         error
+}
+
+node parse_num(std::queue<char> &chars)
 {
 }
 
-node parse_num(std::deque<char> &deq)
+node parse_word(std::queue<char> &chars)
 {
 }
 
-node parse_word(std::deque<char> &deq)
+std::optional<binary_op> parse_binary_op(std::queue<char> &chars)
 {
+    switch(chars.front())
+    {
+        case '+':
+            return binary_op(0, false, &add);
+            break;
+        case '-':
+            return binary_op(0, false, &subtract);
+            break;
+        case '*':
+            return binary_op(1, false, &multiply);
+            break;
+        case '/':
+            return binary_op(1, false, &divide);
+            break;
+        case '^':
+            return binary_op(2, true, &exponentiate);
+            break;
+    }
 }
 
-op parse_op(std::deque<char> &deq)
+std::optional<unary_op> parse_unary_op(std::queue<char> &chars)
 {
-    
+    return unary_op(3, &negate);
 }
 
 syntax_tree parse(string str)
 {
-    std::deque<char> deq;
+    std::queue<char> chars;
+    std::stack<op> ops;
+    std::queue<node> nodes;
     node root;
     
-    for(char c : str) deq.push_back(c);
-    return syntax_tree{root};
+    for(char c : str) chars.push(c);
+    root = parse_expression(chars, ops, nodes, 0);
+    
+    expect( end )
+    
+    return syntax_tree(root);
 }
 
 int main()

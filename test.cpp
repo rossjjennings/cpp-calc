@@ -1,8 +1,24 @@
 #include <iostream>
 #include <list>
+#include <string>
+#include <optional>
 using std::string;
 
+double add_five(double arg) { return arg + 5.0; }
+
+std::optional<string> get_name(bool b)
+{
+    if(b) return "Godzilla";
+    return {};
+}
+
 enum class char_category { num, op, space, other };
+struct unary_op 
+{
+    double (&function)(double arg);
+    
+    unary_op(double (*function)(double)) : function(*function) {}
+};
 
 char_category categorize(char c)
 {
@@ -59,4 +75,18 @@ int main()
     std::cout << "In two-character groups, your input was:" << std::endl;
     for(string s : l) std::cout << "\"" << s << "\" ";
     std::cout << std::endl;
+    
+    std::cout << "Type a number to add five to:" << std::endl;
+    std::getline(std::cin, line);
+    double number = std::stod(line);
+    const unary_op op = unary_op(&add_five);
+    std::cout << "Five more than your number is " << op.function(number) << std::endl;
+    
+    std::cout << "Would you like the name of a monster?" << std::endl;
+    std::getline(std::cin, line);
+    std::optional<string> name = get_name(line[0] == 'y' || line[0] == 'Y');
+    if(name) std::cout << "OK, here's one: " << *name << std::endl;
+    else std::cout << "Fine, then. I quit!" << std::endl;
+    
+    return 0;
 }

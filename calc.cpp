@@ -34,7 +34,7 @@ struct unary_op : op
     double (*function)(double);
     
     unary_op(int prec, double (*func_ptr)(double)):
-     op(prec), function(func_ptr) {}
+      op(prec), function(func_ptr) {}
 };
 
 struct binary_op : op 
@@ -43,42 +43,53 @@ struct binary_op : op
     double (*function)(double, double);
     
     binary_op(int prec, bool right_assoc, double (*func_ptr)(double, double)):
-     op(prec), right_assoc(right_assoc), function(func_ptr) {}
+      op(prec), right_assoc(right_assoc), function(func_ptr) {}
 };
 
 struct unary : node
 {
-    const unary_op &uop;
-    const node &operand;
+    unique_ptr<const unary_op> uop;
+    unique_ptr<const node> operand;
     double evaluate() const
     {
         std::cout << "Evaluating unary node..." << std::endl;
-        return (*uop.function)(operand.evaluate());
+        auto child_result = operand->evaluate();
+        std::cout << "Using child result " << child_result << std::endl;
+        auto value = (*uop->function)(child_result);
+        std::cout << "Got a value " << value << " for unary node." << std::endl;
+        return value;
     }
 
-    unary(const unary_op &uop, const node &operand):
-     uop(uop), operand(operand) {}
+    unary(unique_ptr<const unary_op> uop, unique_ptr<const node> operand):
+      uop(std::move(uop)), operand(std::move(operand)) {}
 };
 
 struct binary : node
 {
-    const binary_op &bop;
-    const node &left_operand;
-    const node &right_operand;
+    unique_ptr<const binary_op> bop;
+    unique_ptr<const node> left_operand;
+    unique_ptr<const node> right_operand;
     double evaluate() const
     {
         std::cout << "Evaluating binary node..." << std::endl;
-        return (*bop.function)(left_operand.evaluate(), right_operand.evaluate());
+        auto value = (*bop->function)(left_operand->evaluate(), right_operand->evaluate());
+        std::cout << "Got a value " << value << " for binary node." << std::endl;
+        return value;
     }
-
-    binary(const binary_op &bop, const node &left_operand, const node &right_operand):
-     bop(bop), left_operand(left_operand), right_operand(right_operand) {}
+    
+    binary(unique_ptr<const binary_op> bop, unique_ptr<const node> left_operand, 
+           unique_ptr<const node> right_operand):
+      bop(std::move(bop)), left_operand(std::move(left_operand)), right_operand(std::move(right_operand)) {}
 };
 
 struct number : node
 {
     const double value;
-    double evaluate() const { return value; }
+    double evaluate() const 
+    {
+        std::cout << "Got a value " << value << " for number." << std::endl;
+        return value;
+    }
     
     number(double value): value(value) {}
 };
@@ -91,14 +102,6 @@ std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars);
 
 unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
 {
-    std::queue tmp_q = chars;
-    while (!tmp_q.empty())
-    {
-        auto q_element = tmp_q.front();
-        std::cout << q_element;
-        tmp_q.pop();
-    } 
-    std::cout << "'." << std::endl;
     unique_ptr<node> cur_node = parse_atom(chars);
     
     std::optional<unique_ptr<binary_op>> bop;
@@ -111,7 +114,7 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
         }
         unique_ptr<node> expression = 
           parse_expression(chars, (*bop)->right_assoc ? (*bop)->prec : (*bop)->prec + 1);
-        cur_node = make_unique<binary>(*(*bop), *cur_node, *expression);
+        cur_node = make_unique<binary>(std::move(*bop), std::move(cur_node), std::move(expression));
     }
     
     return cur_node;
@@ -119,13 +122,12 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
 
 unique_ptr<node> parse_atom(std::queue<char> &chars)
 {
-    std::cout << "Parsing atom..." << std::endl;
     unique_ptr<node> cur_node;
     
     if(auto uop = parse_unary_op(chars))
     {
         cur_node = parse_expression(chars, (*uop)->prec);
-        return make_unique<unary>(*(*uop), *cur_node);
+        return make_unique<unary>(std::move(*uop), std::move(cur_node));
     }
     else if(chars.front() == '(')
     {

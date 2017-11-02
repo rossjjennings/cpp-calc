@@ -1,10 +1,14 @@
 #include <iostream>
+#include <memory>
 #include <list>
 #include <stack>
 #include <queue>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
 using std::string;
+using std::unique_ptr;
+using std::make_unique;
 
 double add(double augend, double addend) { return augend + addend; }
 double subtract(double minuend, double subtrahend) { return minuend - subtrahend; }
@@ -18,13 +22,6 @@ struct node
     virtual double evaluate() const = 0;
 };
 
-struct syntax_tree
-{
-    const node &root;
-    
-    syntax_tree(const node &root): root(root) {}
-};
-
 struct op 
 {
     const int prec;
@@ -34,19 +31,19 @@ struct op
 
 struct unary_op : op 
 {
-    double (&function)(double);
+    double (*function)(double);
     
     unary_op(int prec, double (*func_ptr)(double)):
-     op(prec), function(*func_ptr) {}
+     op(prec), function(func_ptr) {}
 };
 
 struct binary_op : op 
 {
     const bool right_assoc;
-    double (&function)(double, double);
+    double (*function)(double, double);
     
     binary_op(int prec, bool right_assoc, double (*func_ptr)(double, double)):
-     op(prec), right_assoc(right_assoc), function(*func_ptr) {}
+     op(prec), right_assoc(right_assoc), function(func_ptr) {}
 };
 
 struct unary : node
@@ -54,7 +51,7 @@ struct unary : node
     const unary_op &uop;
     const node &operand;
     double evaluate() const
-    { return uop.function(operand.evaluate()); }
+    { return (*uop.function)(operand.evaluate()); }
 
     unary(const unary_op &uop, const node &operand):
      uop(uop), operand(operand) {}
@@ -66,10 +63,10 @@ struct binary : node
     const node &left_operand;
     const node &right_operand;
     double evaluate() const
-    { return bop.function(left_operand.evaluate(), right_operand.evaluate()); }
+    { return (*bop.function)(left_operand.evaluate(), right_operand.evaluate()); }
 
     binary(const binary_op &bop, const node &left_operand, const node &right_operand):
-     left_operand(left_operand), right_operand(right_operand) {}
+     bop(bop), left_operand(left_operand), right_operand(right_operand) {}
 };
 
 struct number : node
@@ -80,106 +77,152 @@ struct number : node
     number(double value): value(value) {}
 };
 
-enum class charcat { digit, dot, op, space, paren, other };
+unique_ptr<node> parse_expression(std::queue<char> &chars);
+unique_ptr<node> parse_atom(std::queue<char> &chars);
+std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars);
+std::optional<unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars);
+std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars);
 
-charcat categorize(char c)
+unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
 {
-    const string digits = "0123456789";
-    const string op_chars = "+-*/^";
-    const string paren_chars = "()";
-    if(c == ' ') return charcat::space;
-    else if(c == '.') return charcat::dot;
-    else if(digits.find(c) != string::npos) return charcat::digit;
-    else if(op_chars.find(c) != string::npos) return charcat::op;
-    else if(paren_chars.find(c) != string::npos) return charcat::paren;
-    else return charcat::other;
-}
-
-node parse_expression(std::queue<char> &chars, std::stack<op> &ops, std::queue<node> &nodes, int prec)
-{
-    node cur_node = parse_atom(chars, ops, nodes);
-    
-    op tmp;
-    binary_op bop;
-    for(binary_op bop; bop = parse_op(chars); bop.prec >= prec)
+    std::cout << "Parsing expression..." << std::endl;
+    std::cout << "Chars remaining in queue are '";
+    std::queue tmp_q = chars;
+    while (!tmp_q.empty())
     {
-        node expression = 
-          parse_expression(bop.right_assoc ? bop.prec : bop.prec + 1)
-        cur_node = binary(bop, cur_node, expression)
+        auto q_element = tmp_q.front();
+        std::cout << q_element;
+        tmp_q.pop();
+    } 
+    std::cout << "'." << std::endl;
+    unique_ptr<node> cur_node = parse_atom(chars);
+    
+    std::optional<unique_ptr<binary_op>> bop;
+    while(true)
+    {
+        bop = parse_binary_op(chars);
+        if(bop) std::cout << "Got a binary operator." << std::endl;
+        else std::cout << "No binary operator here." << std::endl;
+        if(!bop || (*bop)->prec < prec)
+        {
+            std::cout << "Breaking loop..." << std::endl;
+            break;
+        }
+        unique_ptr<node> expression = 
+          parse_expression(chars, (*bop)->right_assoc ? (*bop)->prec : (*bop)->prec + 1);
+        cur_node = make_unique<binary>(*(*bop), *cur_node, *expression);
     }
+    std::cout << "Made it out of the loop!" << std::endl;
     
     return cur_node;
 }
 
-node parse_atom(std::queue<char> &chars, std::stack<op> &ops, std::queue<node> &nodes)
+unique_ptr<node> parse_atom(std::queue<char> &chars)
 {
-    if next is a unary operator
-         op = unary(next)
-         consume
-         q = prec( op )
-         t = parse_expression( q )
-         return mkNode( op, t )
-    else if next = "("
-         consume
-         t = parse_expression( 0 )
-         expect ")"
-         return t
-    else if next is a v
-         t = mkLeaf( next )
-         consume
-         return t
-    else
-         error
+    std::cout << "Parsing atom..." << std::endl;
+    unique_ptr<node> cur_node;
+    
+    if(auto uop = parse_unary_op(chars))
+    {
+        cur_node = parse_expression(chars, (*uop)->prec);
+        return make_unique<unary>(*(*uop), *cur_node);
+    }
+    else if(chars.front() == '(')
+    {
+        chars.pop();
+        cur_node = parse_expression(chars, 0);
+        if(chars.front() != ')') throw std::invalid_argument("Invalid syntax: expected ')'.");
+        chars.pop();
+        return cur_node;
+    }
+    else if(auto num = parse_num(chars))
+        return std::move(*num);
+    else throw std::invalid_argument("Invalid syntax: "
+                                     "expected number or parenthesized expression.");
 }
 
-node parse_num(std::queue<char> &chars)
+std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars)
 {
+    std::cout << "Parsing number..." << std::endl;
+    const static string numchars = "1234567890.";
+    string buf;
+    
+    if(chars.empty() || numchars.find(chars.front()) == string::npos)
+        return std::nullopt;
+    
+    while(!chars.empty() && numchars.find(chars.front()) != string::npos)
+    {
+        buf += chars.front();
+        chars.pop();
+    }
+    
+    std::cout << "Got " << std::stod(buf) << "." << std::endl;
+    return make_unique<number>(std::stod(buf));
 }
 
-node parse_word(std::queue<char> &chars)
+std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars)
 {
-}
-
-std::optional<binary_op> parse_binary_op(std::queue<char> &chars)
-{
+    std::cout << "Parsing binary operator..." << std::endl;
+    if(chars.empty()) return std::nullopt;
+    
     switch(chars.front())
     {
         case '+':
-            return binary_op(0, false, &add);
+            chars.pop();
+            return make_unique<binary_op>(0, false, &add);
             break;
         case '-':
-            return binary_op(0, false, &subtract);
+            chars.pop();
+            return make_unique<binary_op>(0, false, &subtract);
             break;
         case '*':
-            return binary_op(1, false, &multiply);
+            chars.pop();
+            return make_unique<binary_op>(1, false, &multiply);
             break;
         case '/':
-            return binary_op(1, false, &divide);
+            chars.pop();
+            return make_unique<binary_op>(1, false, &divide);
             break;
         case '^':
-            return binary_op(2, true, &exponentiate);
+            chars.pop();
+            return make_unique<binary_op>(2, true, &exponentiate);
             break;
+        default:
+            return std::nullopt;
     }
 }
 
-std::optional<unary_op> parse_unary_op(std::queue<char> &chars)
+std::optional<unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars)
 {
-    return unary_op(3, &negate);
+    std::cout << "Parsing unary operator..." << std::endl;
+    if(chars.empty()) return std::nullopt;
+    
+    if(chars.front() == '-')
+    {
+        std::cout << "Found a '-', yup." << std::endl;
+        chars.pop();
+        return make_unique<unary_op>(3, &negate);
+    }
+    else
+    {
+        std::cout << "No unary operator here." << std::endl;
+        return std::nullopt;
+    }
 }
 
-syntax_tree parse(string str)
+unique_ptr<node> parse(string str)
 {
+    std::cout << "Parsing..." << std::endl;
     std::queue<char> chars;
-    std::stack<op> ops;
-    std::queue<node> nodes;
-    node root;
+    unique_ptr<node> root;
     
     for(char c : str) chars.push(c);
-    root = parse_expression(chars, ops, nodes, 0);
+    root = parse_expression(chars, 0);
+    std::cout << "Returned to parse() call!" << std::endl;
     
-    expect( end )
+    if(!chars.empty()) throw std::invalid_argument("Invalid syntax: expected EOF");
     
-    return syntax_tree(root);
+    return root;
 }
 
 int main()
@@ -189,31 +232,10 @@ int main()
     std::cout << "Enter an expression:" << std::endl;
     std::getline(std::cin, expr);
     std::cout << "You entered: " << expr << std::endl;
-    string empty;
-    std::cout << empty << std::endl;
     
-    std::list<token> tokens = tokenize(expr);
-    std::cout << "Tokens in your input were:" << std::endl;
-    for(token t : tokens)
-    {
-        std::cout << "\"" << t.content << "\" " << "(";
-        switch(t.kind)
-        {
-            case tokenkind::num:
-                std::cout << "num";
-                break;
-            case tokenkind::word:
-                std::cout << "word";
-                break;
-            case tokenkind::op:
-                std::cout << "op";
-                break;
-            default:
-                std::cout << "none";
-        }
-        std::cout << ") ";
-    }
-    std::cout << std::endl;
+    unique_ptr<node> syntax_tree = parse(expr);
+    std::cout << "Returned to main()!" << std::endl;
+    std::cout << "This evaluates to " << syntax_tree->evaluate() << "." << std::endl;
     return 0;
 }
 

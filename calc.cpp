@@ -51,7 +51,10 @@ struct unary : node
     const unary_op &uop;
     const node &operand;
     double evaluate() const
-    { return (*uop.function)(operand.evaluate()); }
+    {
+        std::cout << "Evaluating unary node..." << std::endl;
+        return (*uop.function)(operand.evaluate());
+    }
 
     unary(const unary_op &uop, const node &operand):
      uop(uop), operand(operand) {}
@@ -63,7 +66,10 @@ struct binary : node
     const node &left_operand;
     const node &right_operand;
     double evaluate() const
-    { return (*bop.function)(left_operand.evaluate(), right_operand.evaluate()); }
+    {
+        std::cout << "Evaluating binary node..." << std::endl;
+        return (*bop.function)(left_operand.evaluate(), right_operand.evaluate());
+    }
 
     binary(const binary_op &bop, const node &left_operand, const node &right_operand):
      bop(bop), left_operand(left_operand), right_operand(right_operand) {}
@@ -85,8 +91,6 @@ std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars);
 
 unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
 {
-    std::cout << "Parsing expression..." << std::endl;
-    std::cout << "Chars remaining in queue are '";
     std::queue tmp_q = chars;
     while (!tmp_q.empty())
     {
@@ -101,18 +105,14 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
     while(true)
     {
         bop = parse_binary_op(chars);
-        if(bop) std::cout << "Got a binary operator." << std::endl;
-        else std::cout << "No binary operator here." << std::endl;
         if(!bop || (*bop)->prec < prec)
         {
-            std::cout << "Breaking loop..." << std::endl;
             break;
         }
         unique_ptr<node> expression = 
           parse_expression(chars, (*bop)->right_assoc ? (*bop)->prec : (*bop)->prec + 1);
         cur_node = make_unique<binary>(*(*bop), *cur_node, *expression);
     }
-    std::cout << "Made it out of the loop!" << std::endl;
     
     return cur_node;
 }
@@ -143,7 +143,6 @@ unique_ptr<node> parse_atom(std::queue<char> &chars)
 
 std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars)
 {
-    std::cout << "Parsing number..." << std::endl;
     const static string numchars = "1234567890.";
     string buf;
     
@@ -156,13 +155,11 @@ std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars)
         chars.pop();
     }
     
-    std::cout << "Got " << std::stod(buf) << "." << std::endl;
     return make_unique<number>(std::stod(buf));
 }
 
 std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars)
 {
-    std::cout << "Parsing binary operator..." << std::endl;
     if(chars.empty()) return std::nullopt;
     
     switch(chars.front())
@@ -194,18 +191,15 @@ std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars)
 
 std::optional<unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars)
 {
-    std::cout << "Parsing unary operator..." << std::endl;
     if(chars.empty()) return std::nullopt;
     
     if(chars.front() == '-')
     {
-        std::cout << "Found a '-', yup." << std::endl;
         chars.pop();
         return make_unique<unary_op>(3, &negate);
     }
     else
     {
-        std::cout << "No unary operator here." << std::endl;
         return std::nullopt;
     }
 }

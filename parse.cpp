@@ -13,6 +13,12 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
     std::optional<unique_ptr<binary_op>> bop;
     while(true)
     {
+        if(chars.front() == ' ')
+        {
+            chars.pop();
+            break;
+        }
+        
         bop = parse_binary_op(chars);
         if(!bop || (*bop)->prec < prec)
         {
@@ -20,7 +26,8 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
         }
         unique_ptr<node> expression = 
           parse_expression(chars, (*bop)->right_assoc ? (*bop)->prec : (*bop)->prec + 1);
-        cur_node = make_unique<binary>(std::move(*bop), std::move(cur_node), std::move(expression));
+        cur_node = make_unique<binary>(std::move(*bop), std::move(cur_node),
+                                       std::move(expression));
     }
     
     return cur_node;
@@ -39,7 +46,8 @@ unique_ptr<node> parse_atom(std::queue<char> &chars)
     {
         chars.pop();
         cur_node = parse_expression(chars, 0);
-        if(chars.front() != ')') throw std::invalid_argument("Invalid syntax: expected ')'.");
+        if(chars.front() != ')') 
+            throw std::invalid_argument("Invalid syntax: expected ')'.");
         chars.pop();
         return cur_node;
     }

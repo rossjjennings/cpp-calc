@@ -74,10 +74,7 @@ struct number : node
 {
     const double value;
     double evaluate() const 
-    {
-        std::cout << "Got a value " << value << " for number." << std::endl;
-        return value;
-    }
+    { return value; }
     
     number(double value): value(value) {}
 };

@@ -51,14 +51,7 @@ struct unary : node
     unique_ptr<const unary_op> uop;
     unique_ptr<const node> operand;
     double evaluate() const
-    {
-        std::cout << "Evaluating unary node..." << std::endl;
-        auto child_result = operand->evaluate();
-        std::cout << "Using child result " << child_result << std::endl;
-        auto value = (*uop->function)(child_result);
-        std::cout << "Got a value " << value << " for unary node." << std::endl;
-        return value;
-    }
+    { return (*uop->function)(operand->evaluate()); }
 
     unary(unique_ptr<const unary_op> uop, unique_ptr<const node> operand):
       uop(std::move(uop)), operand(std::move(operand)) {}
@@ -70,12 +63,7 @@ struct binary : node
     unique_ptr<const node> left_operand;
     unique_ptr<const node> right_operand;
     double evaluate() const
-    {
-        std::cout << "Evaluating binary node..." << std::endl;
-        auto value = (*bop->function)(left_operand->evaluate(), right_operand->evaluate());
-        std::cout << "Got a value " << value << " for binary node." << std::endl;
-        return value;
-    }
+    { return (*bop->function)(left_operand->evaluate(), right_operand->evaluate()); }
     
     binary(unique_ptr<const binary_op> bop, unique_ptr<const node> left_operand, 
            unique_ptr<const node> right_operand):
@@ -208,13 +196,11 @@ std::optional<unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars)
 
 unique_ptr<node> parse(string str)
 {
-    std::cout << "Parsing..." << std::endl;
     std::queue<char> chars;
     unique_ptr<node> root;
     
     for(char c : str) chars.push(c);
     root = parse_expression(chars, 0);
-    std::cout << "Returned to parse() call!" << std::endl;
     
     if(!chars.empty()) throw std::invalid_argument("Invalid syntax: expected EOF");
     
@@ -230,7 +216,6 @@ int main()
     std::cout << "You entered: " << expr << std::endl;
     
     unique_ptr<node> syntax_tree = parse(expr);
-    std::cout << "Returned to main()!" << std::endl;
     std::cout << "This evaluates to " << syntax_tree->evaluate() << "." << std::endl;
     return 0;
 }

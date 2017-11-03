@@ -2,6 +2,7 @@
 #include <list>
 #include <string>
 #include <optional>
+#include <queue>
 using std::string;
 
 double add_five(double arg) { return arg + 5.0; }
@@ -33,6 +34,10 @@ char_category categorize(char c)
 
 int main()
 {
+    if(int temp = 5) std::cout << "Success!" << std::endl;
+    std::queue<int> q;
+    std::cout << "First element in an empty std::queue<int> is " << q.front() << std::endl;
+    
     string changeable = "This string will change.";
     std::cout << changeable << std::endl;
     changeable = string();

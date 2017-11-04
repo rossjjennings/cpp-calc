@@ -1,7 +1,6 @@
 #include <iostream>
 #include <memory>
 #include <cmath>
-#include "syntax-tree.h"
 #include "parse.h"
 
 int main()

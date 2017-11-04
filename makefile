@@ -11,4 +11,7 @@ parse.o : parse.cpp parse.h
 
 syntax-tree.o : syntax-tree.cpp syntax-tree.h
 	c++ -std=c++17 -c syntax-tree.cpp
-	
+
+.PHONY : clean
+clean :
+	rm calc $(objects)

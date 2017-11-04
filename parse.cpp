@@ -13,12 +13,6 @@ unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
     std::optional<unique_ptr<binary_op>> bop;
     while(true)
     {
-        if(chars.front() == ' ')
-        {
-            chars.pop();
-            break;
-        }
-        
         bop = parse_binary_op(chars);
         if(!bop || (*bop)->prec < prec)
         {
@@ -125,7 +119,10 @@ unique_ptr<node> parse(string str)
     std::queue<char> chars;
     unique_ptr<node> root;
     
-    for(char c : str) chars.push(c);
+    for(char c : str)
+    {
+        if(c != ' ') chars.push(c);
+    }
     root = parse_expression(chars, 0);
     
     if(!chars.empty()) throw std::invalid_argument("Invalid syntax: expected EOF");

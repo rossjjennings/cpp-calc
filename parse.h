@@ -2,7 +2,6 @@
 #define parse_h
 
 #include <memory>
-#include <optional>
 #include <queue>
 #include "syntax-tree.h"
 

@@ -1,4 +1,3 @@
-CXXFLAGS = -std=c++17
 objects = arithmetic.o parse.o syntax-tree.o
 
 calc : calc.cpp $(objects)

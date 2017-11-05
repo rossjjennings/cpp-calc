@@ -11,7 +11,7 @@ int main()
     std::getline(std::cin, expr);
     std::cout << "You entered: " << expr << std::endl;
     
-    std::unique_ptr<node> syntax_tree = parse(expr);
+    auto syntax_tree = parse(expr);
     std::cout << "This evaluates to " << syntax_tree->evaluate() << "." << std::endl;
     return 0;
 }

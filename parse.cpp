@@ -8,31 +8,31 @@ using std::shared_ptr;
 using std::make_unique;
 using std::make_shared;
 
-unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
+unique_ptr<const node> parse_expression(std::queue<char> &chars, int prec)
 {
-    unique_ptr<node> cur_node = parse_atom(chars);
+    unique_ptr<const node> cur_node = parse_atom(chars);
     
     shared_ptr<const binary_op> bop;
     while(true)
     {
         if(!(bop = parse_binary_op(chars)) || bop->prec < prec) break;
-        unique_ptr<node> expression = 
+        auto expression = 
           parse_expression(chars, bop->right_assoc ? bop->prec : bop->prec + 1);
-        cur_node = make_unique<binary>(bop, std::move(cur_node),
+        cur_node = make_unique<const binary>(bop, std::move(cur_node),
                                        std::move(expression));
     }
     
     return cur_node;
 }
 
-unique_ptr<node> parse_atom(std::queue<char> &chars)
+unique_ptr<const node> parse_atom(std::queue<char> &chars)
 {
-    unique_ptr<node> cur_node;
+    unique_ptr<const node> cur_node;
     
     if(auto uop = parse_unary_op(chars))
     {
         cur_node = parse_expression(chars, uop->prec);
-        return make_unique<unary>(uop, std::move(cur_node));
+        return make_unique<const unary>(uop, std::move(cur_node));
     }
     else if(chars.front() == '(')
     {
@@ -49,7 +49,7 @@ unique_ptr<node> parse_atom(std::queue<char> &chars)
                                      "expected number or parenthesized expression.");
 }
 
-unique_ptr<number> parse_num(std::queue<char> &chars)
+unique_ptr<const number> parse_num(std::queue<char> &chars)
 {
     const static string numchars = "1234567890.";
     string buf;
@@ -63,7 +63,7 @@ unique_ptr<number> parse_num(std::queue<char> &chars)
         chars.pop();
     }
     
-    return make_unique<number>(std::stod(buf));
+    return make_unique<const number>(std::stod(buf));
 }
 
 shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
@@ -117,16 +117,15 @@ shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
     else return nullptr;
 }
 
-unique_ptr<node> parse(string str)
+unique_ptr<const node> parse(string str)
 {
     std::queue<char> chars;
-    unique_ptr<node> root;
     
     for(char c : str)
     {
         if(c != ' ') chars.push(c);
     }
-    root = parse_expression(chars, 0);
+    unique_ptr<const node> root = parse_expression(chars, 0);
     
     if(!chars.empty()) throw std::invalid_argument("Invalid syntax: expected EOF");
     

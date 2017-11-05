@@ -1,6 +1,4 @@
 #include <iostream>
-#include <memory>
-#include <cmath>
 #include "parse.h"
 
 int main()

@@ -4,23 +4,21 @@
 
 using std::string;
 using std::unique_ptr;
+using std::shared_ptr;
 using std::make_unique;
+using std::make_shared;
 
 unique_ptr<node> parse_expression(std::queue<char> &chars, int prec)
 {
     unique_ptr<node> cur_node = parse_atom(chars);
     
-    std::optional<unique_ptr<binary_op>> bop;
+    shared_ptr<const binary_op> bop;
     while(true)
     {
-        bop = parse_binary_op(chars);
-        if(!bop || (*bop)->prec < prec)
-        {
-            break;
-        }
+        if(!(bop = parse_binary_op(chars)) || bop->prec < prec) break;
         unique_ptr<node> expression = 
-          parse_expression(chars, (*bop)->right_assoc ? (*bop)->prec : (*bop)->prec + 1);
-        cur_node = make_unique<binary>(std::move(*bop), std::move(cur_node),
+          parse_expression(chars, bop->right_assoc ? bop->prec : bop->prec + 1);
+        cur_node = make_unique<binary>(bop, std::move(cur_node),
                                        std::move(expression));
     }
     
@@ -33,8 +31,8 @@ unique_ptr<node> parse_atom(std::queue<char> &chars)
     
     if(auto uop = parse_unary_op(chars))
     {
-        cur_node = parse_expression(chars, (*uop)->prec);
-        return make_unique<unary>(std::move(*uop), std::move(cur_node));
+        cur_node = parse_expression(chars, uop->prec);
+        return make_unique<unary>(uop, std::move(cur_node));
     }
     else if(chars.front() == '(')
     {
@@ -46,18 +44,18 @@ unique_ptr<node> parse_atom(std::queue<char> &chars)
         return cur_node;
     }
     else if(auto num = parse_num(chars))
-        return std::move(*num);
+        return std::move(num);
     else throw std::invalid_argument("Invalid syntax: "
                                      "expected number or parenthesized expression.");
 }
 
-std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars)
+unique_ptr<number> parse_num(std::queue<char> &chars)
 {
     const static string numchars = "1234567890.";
     string buf;
     
     if(chars.empty() || numchars.find(chars.front()) == string::npos)
-        return std::nullopt;
+        return nullptr;
     
     while(!chars.empty() && numchars.find(chars.front()) != string::npos)
     {
@@ -68,50 +66,55 @@ std::optional<unique_ptr<number>> parse_num(std::queue<char> &chars)
     return make_unique<number>(std::stod(buf));
 }
 
-std::optional<unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars)
+shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
 {
-    if(chars.empty()) return std::nullopt;
+	static shared_ptr<const binary_op> plus = make_shared<binary_op>(0, false, &add);
+	static shared_ptr<const binary_op> minus = make_shared<binary_op>(0, false, &subtract);
+	static shared_ptr<const binary_op> times = make_shared<binary_op>(1, false, &multiply);
+	static shared_ptr<const binary_op> divided_by = make_shared<binary_op>(1, false, &divide);
+	static shared_ptr<const binary_op> to_power = make_shared<binary_op>(2, true, &exponentiate);
+	
+    if(chars.empty()) return nullptr;
     
     switch(chars.front())
     {
         case '+':
             chars.pop();
-            return make_unique<binary_op>(0, false, &add);
+            return plus;
             break;
         case '-':
             chars.pop();
-            return make_unique<binary_op>(0, false, &subtract);
+            return minus;
             break;
         case '*':
             chars.pop();
-            return make_unique<binary_op>(1, false, &multiply);
+            return times;
             break;
         case '/':
             chars.pop();
-            return make_unique<binary_op>(1, false, &divide);
+            return divided_by;
             break;
         case '^':
             chars.pop();
-            return make_unique<binary_op>(2, true, &exponentiate);
+            return to_power;
             break;
         default:
-            return std::nullopt;
+            return nullptr;
     }
 }
 
-std::optional<unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars)
+shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
 {
-    if(chars.empty()) return std::nullopt;
+	static shared_ptr<const unary_op> negative = make_shared<unary_op>(3, &negate);
+	
+    if(chars.empty()) return nullptr;
     
     if(chars.front() == '-')
     {
         chars.pop();
-        return make_unique<unary_op>(3, &negate);
+        return negative;
     }
-    else
-    {
-        return std::nullopt;
-    }
+    else return nullptr;
 }
 
 unique_ptr<node> parse(string str)

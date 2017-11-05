@@ -30,20 +30,20 @@ struct node
 
 struct unary : node
 {
-    std::unique_ptr<const unary_op> uop;
+    std::shared_ptr<const unary_op> uop;
     std::unique_ptr<const node> operand;
     double evaluate() const;
-    unary(std::unique_ptr<const unary_op> uop,
+    unary(std::shared_ptr<const unary_op> uop,
           std::unique_ptr<const node> operand);
 };
 
 struct binary : node
 {
-    std::unique_ptr<const binary_op> bop;
+    std::shared_ptr<const binary_op> bop;
     std::unique_ptr<const node> left_operand;
     std::unique_ptr<const node> right_operand;
     double evaluate() const;
-    binary(std::unique_ptr<const binary_op> bop,
+    binary(std::shared_ptr<const binary_op> bop,
            std::unique_ptr<const node> left_operand, 
            std::unique_ptr<const node> right_operand);
 };

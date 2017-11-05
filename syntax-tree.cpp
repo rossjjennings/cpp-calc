@@ -1,5 +1,6 @@
 #include "syntax-tree.h"
 using std::unique_ptr;
+using std::shared_ptr;
 
 //op
 
@@ -19,9 +20,9 @@ binary_op::binary_op(int prec, bool right_assoc,
 double unary::evaluate() const
 { return (*uop->function)(operand->evaluate()); }
 
-unary::unary(unique_ptr<const unary_op> uop,
+unary::unary(shared_ptr<const unary_op> uop,
              unique_ptr<const node> operand):
-    uop(std::move(uop)), operand(std::move(operand)) {}
+    uop(uop), operand(std::move(operand)) {}
 
 //binary
 
@@ -31,10 +32,10 @@ double binary::evaluate() const
                             right_operand->evaluate());
 }
     
-binary::binary(unique_ptr<const binary_op> bop, 
+binary::binary(shared_ptr<const binary_op> bop, 
                unique_ptr<const node> left_operand, 
                 unique_ptr<const node> right_operand):
-    bop(std::move(bop)),
+    bop(bop),
     left_operand(std::move(left_operand)),
     right_operand(std::move(right_operand)) {}
 

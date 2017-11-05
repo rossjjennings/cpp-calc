@@ -8,9 +8,9 @@
 
 std::unique_ptr<node> parse_expression(std::queue<char> &chars, int prec);
 std::unique_ptr<node> parse_atom(std::queue<char> &chars);
-std::optional<std::unique_ptr<number>> parse_num(std::queue<char> &chars);
-std::optional<std::unique_ptr<binary_op>> parse_binary_op(std::queue<char> &chars);
-std::optional<std::unique_ptr<unary_op>> parse_unary_op(std::queue<char> &chars);
+std::unique_ptr<number> parse_num(std::queue<char> &chars);
+std::shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars);
+std::shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars);
 std::unique_ptr<node> parse(std::string str);
 
 #endif

@@ -100,6 +100,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return minus.lock();
             break;
         case '*':
+            chars.pop();
             if(times.expired())
             {
                 auto strong_times = make_shared<const binary_op>('*', 1, false, &multiply);
@@ -109,6 +110,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return times.lock();
             break;
         case '/':
+            chars.pop();
             if(divided_by.expired())
             {
                 auto strong_divided_by = make_shared<const binary_op>('/', 1, false, &divide);
@@ -118,6 +120,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return divided_by.lock();
             break;
         case '^':
+            chars.pop();
             if(to_power.expired())
             {
                 auto strong_to_power = make_shared<const binary_op>('^', 2, true, &exponentiate);

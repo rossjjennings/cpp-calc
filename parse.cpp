@@ -91,60 +91,35 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
       [](double base, double power)
           { return std::pow(base, power); };
     
-	static weak_ptr<const binary_op> plus;
-	static weak_ptr<const binary_op> minus;
-	static weak_ptr<const binary_op> times;
-	static weak_ptr<const binary_op> divided_by;
-	static weak_ptr<const binary_op> to_power;
+	static shared_ptr<const binary_op> plus = 
+	    make_shared<const binary_op>('+', 0, false, add);
+	static shared_ptr<const binary_op> minus =
+	    make_shared<const binary_op>('-', 0, false, subtract);
+	static shared_ptr<const binary_op> times =
+	    make_shared<const binary_op>('*', 1, false, multiply);
+	static shared_ptr<const binary_op> divided_by = 
+	    make_shared<const binary_op>('/', 1, false, divide);
+	static shared_ptr<const binary_op> to_power = 
+	    make_shared<const binary_op>('^', 2, true, exponentiate);
 	
     if(chars.empty()) return nullptr;
     
     switch(chars.front())
     {
         case '+':
-            if(plus.expired())
-            {
-                auto strong_plus = make_shared<const binary_op>('+', 0, false, add);
-                plus = strong_plus;
-                return strong_plus;
-            }
-            else return plus.lock();
+            return plus;
             break;
         case '-':
-            if(minus.expired())
-            {
-                auto strong_minus = make_shared<const binary_op>('-', 0, false, subtract);
-                minus = strong_minus;
-                return strong_minus;
-            }
-            else return minus.lock();
+            return minus;
             break;
         case '*':
-            if(times.expired())
-            {
-                auto strong_times = make_shared<const binary_op>('*', 1, false, multiply);
-                times = strong_times;
-                return strong_times;
-            }
-            else return times.lock();
+            return times;
             break;
         case '/':
-            if(divided_by.expired())
-            {
-                auto strong_divided_by = make_shared<const binary_op>('/', 1, false, divide);
-                divided_by = strong_divided_by;
-                return strong_divided_by;
-            }
-            else return divided_by.lock();
+            return divided_by;
             break;
         case '^':
-            if(to_power.expired())
-            {
-                auto strong_to_power = make_shared<const binary_op>('^', 2, true, exponentiate);
-                to_power = strong_to_power;
-                return strong_to_power;
-            }
-            else return to_power.lock();
+            return to_power;
             break;
         default:
             return nullptr;
@@ -157,20 +132,12 @@ shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
       [](double argument)
           { return -argument; };
     
-	static weak_ptr<const unary_op> negative;
+	static shared_ptr<const unary_op> negative = 
+	    make_shared<const unary_op>('-', 3, negate);
 	
     if(chars.empty()) return nullptr;
     
-    if(chars.front() == '-')
-    {
-        if(negative.expired())
-        {
-            auto strong_negative = make_shared<const unary_op>('-', 3, negate);
-            negative = strong_negative;
-            return strong_negative;
-        }
-        else return negative.lock();
-    }
+    if(chars.front() == '-') return negative;
     else return nullptr;
 }
 

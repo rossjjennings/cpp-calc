@@ -17,6 +17,7 @@ unique_ptr<const node> parse_expression(std::queue<char> &chars, int prec)
     while(true)
     {
         if(!(bop = parse_binary_op(chars)) || bop->prec < prec) break;
+        chars.pop();
         auto expression = 
           parse_expression(chars, bop->right_assoc ? bop->prec : bop->prec + 1);
         cur_node = make_unique<const binary>(bop, std::move(cur_node),
@@ -32,6 +33,7 @@ unique_ptr<const node> parse_atom(std::queue<char> &chars)
     
     if(auto uop = parse_unary_op(chars))
     {
+        chars.pop();
         cur_node = parse_expression(chars, uop->prec);
         return make_unique<const unary>(uop, std::move(cur_node));
     }
@@ -80,7 +82,6 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
     switch(chars.front())
     {
         case '+':
-            chars.pop();
             if(plus.expired())
             {
                 auto strong_plus = make_shared<const binary_op>('+', 0, false, &add);
@@ -90,7 +91,6 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return plus.lock();
             break;
         case '-':
-            chars.pop();
             if(minus.expired())
             {
                 auto strong_minus = make_shared<const binary_op>('-', 0, false, &subtract);
@@ -100,7 +100,6 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return minus.lock();
             break;
         case '*':
-            chars.pop();
             if(times.expired())
             {
                 auto strong_times = make_shared<const binary_op>('*', 1, false, &multiply);
@@ -110,7 +109,6 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return times.lock();
             break;
         case '/':
-            chars.pop();
             if(divided_by.expired())
             {
                 auto strong_divided_by = make_shared<const binary_op>('/', 1, false, &divide);
@@ -120,7 +118,6 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
             else return divided_by.lock();
             break;
         case '^':
-            chars.pop();
             if(to_power.expired())
             {
                 auto strong_to_power = make_shared<const binary_op>('^', 2, true, &exponentiate);
@@ -142,7 +139,6 @@ shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
     
     if(chars.front() == '-')
     {
-        chars.pop();
         if(negative.expired())
         {
             auto strong_negative = make_shared<const unary_op>('-', 3, &negate);

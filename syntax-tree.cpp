@@ -4,14 +4,14 @@ using std::shared_ptr;
 
 //op
 
-op::op(int prec): prec(prec) {}
+op::op(char name, int prec): name(name), prec(prec) {}
 
-unary_op::unary_op(int prec, double (*func_ptr)(double)):
-    op(prec), function(func_ptr) {}
+unary_op::unary_op(char name, int prec, double (*func_ptr)(double)):
+    op(name, prec), function(func_ptr) {}
 
-binary_op::binary_op(int prec, bool right_assoc,
+binary_op::binary_op(char name, int prec, bool right_assoc,
                      double (*func_ptr)(double, double)):
-    op(prec),
+    op(name, prec),
     right_assoc(right_assoc),
     function(func_ptr) {}
 

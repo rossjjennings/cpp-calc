@@ -2,24 +2,26 @@
 #define syntax_tree_h
 
 #include <memory>
+#include <string>
 
 struct op 
 {
     const int prec;
-    op(int prec);
+    const char name;
+    op(char name, int prec);
 };
 
 struct unary_op : op 
 {
     double (*function)(double);
-    unary_op(int prec, double (*func_ptr)(double));
+    unary_op(char name, int prec, double (*func_ptr)(double));
 };
 
 struct binary_op : op 
 {
     const bool right_assoc;
     double (*function)(double, double);
-    binary_op(int prec, bool right_assoc,
+    binary_op(char name, int prec, bool right_assoc,
               double (*func_ptr)(double, double));
 };
 

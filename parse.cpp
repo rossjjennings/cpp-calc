@@ -5,6 +5,7 @@
 using std::string;
 using std::unique_ptr;
 using std::shared_ptr;
+using std::weak_ptr;
 using std::make_unique;
 using std::make_shared;
 
@@ -68,11 +69,11 @@ unique_ptr<const number> parse_num(std::queue<char> &chars)
 
 shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
 {
-	static shared_ptr<const binary_op> plus = make_shared<binary_op>(0, false, &add);
-	static shared_ptr<const binary_op> minus = make_shared<binary_op>(0, false, &subtract);
-	static shared_ptr<const binary_op> times = make_shared<binary_op>(1, false, &multiply);
-	static shared_ptr<const binary_op> divided_by = make_shared<binary_op>(1, false, &divide);
-	static shared_ptr<const binary_op> to_power = make_shared<binary_op>(2, true, &exponentiate);
+	static weak_ptr<const binary_op> plus;
+	static weak_ptr<const binary_op> minus;
+	static weak_ptr<const binary_op> times;
+	static weak_ptr<const binary_op> divided_by;
+	static weak_ptr<const binary_op> to_power;
 	
     if(chars.empty()) return nullptr;
     
@@ -80,23 +81,50 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
     {
         case '+':
             chars.pop();
-            return plus;
+            if(plus.expired())
+            {
+                auto strong_plus = make_shared<const binary_op>('+', 0, false, &add);
+                plus = strong_plus;
+                return strong_plus;
+            }
+            else return plus.lock();
             break;
         case '-':
             chars.pop();
-            return minus;
+            if(minus.expired())
+            {
+                auto strong_minus = make_shared<const binary_op>('-', 0, false, &subtract);
+                minus = strong_minus;
+                return strong_minus;
+            }
+            else return minus.lock();
             break;
         case '*':
-            chars.pop();
-            return times;
+            if(times.expired())
+            {
+                auto strong_times = make_shared<const binary_op>('*', 1, false, &multiply);
+                times = strong_times;
+                return strong_times;
+            }
+            else return times.lock();
             break;
         case '/':
-            chars.pop();
-            return divided_by;
+            if(divided_by.expired())
+            {
+                auto strong_divided_by = make_shared<const binary_op>('/', 1, false, &divide);
+                divided_by = strong_divided_by;
+                return strong_divided_by;
+            }
+            else return divided_by.lock();
             break;
         case '^':
-            chars.pop();
-            return to_power;
+            if(to_power.expired())
+            {
+                auto strong_to_power = make_shared<const binary_op>('^', 2, true, &exponentiate);
+                to_power = strong_to_power;
+                return strong_to_power;
+            }
+            else return to_power.lock();
             break;
         default:
             return nullptr;
@@ -105,14 +133,20 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
 
 shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
 {
-	static shared_ptr<const unary_op> negative = make_shared<unary_op>(3, &negate);
+	static weak_ptr<const unary_op> negative;
 	
     if(chars.empty()) return nullptr;
     
     if(chars.front() == '-')
     {
         chars.pop();
-        return negative;
+        if(negative.expired())
+        {
+            auto strong_negative = make_shared<const unary_op>('-', 3, &negate);
+            negative = strong_negative;
+            return strong_negative;
+        }
+        else return negative.lock();
     }
     else return nullptr;
 }

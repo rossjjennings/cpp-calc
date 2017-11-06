@@ -1,5 +1,5 @@
 #include <stdexcept>
-#include "arithmetic.h"
+#include <cmath>
 #include "parse.h"
 
 using std::string;
@@ -71,6 +71,26 @@ unique_ptr<const number> parse_num(std::queue<char> &chars)
 
 shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
 {
+    static double (*add)(double, double) = 
+      [](double augend, double addend)
+          { return augend + addend; };
+    
+    static double (*subtract)(double, double) = 
+      [](double minuend, double subtrahend)
+          { return minuend - subtrahend; };
+    
+    static double (*multiply)(double, double) = 
+      [](double multiplier, double multiplicand)
+          { return multiplier * multiplicand; };
+    
+    static double (*divide)(double, double) = 
+      [](double dividend, double divisor)
+          { return dividend / divisor; };
+    
+    static double (*exponentiate)(double, double) = 
+      [](double base, double power)
+          { return std::pow(base, power); };
+    
 	static weak_ptr<const binary_op> plus;
 	static weak_ptr<const binary_op> minus;
 	static weak_ptr<const binary_op> times;
@@ -84,7 +104,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
         case '+':
             if(plus.expired())
             {
-                auto strong_plus = make_shared<const binary_op>('+', 0, false, &add);
+                auto strong_plus = make_shared<const binary_op>('+', 0, false, add);
                 plus = strong_plus;
                 return strong_plus;
             }
@@ -93,7 +113,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
         case '-':
             if(minus.expired())
             {
-                auto strong_minus = make_shared<const binary_op>('-', 0, false, &subtract);
+                auto strong_minus = make_shared<const binary_op>('-', 0, false, subtract);
                 minus = strong_minus;
                 return strong_minus;
             }
@@ -102,7 +122,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
         case '*':
             if(times.expired())
             {
-                auto strong_times = make_shared<const binary_op>('*', 1, false, &multiply);
+                auto strong_times = make_shared<const binary_op>('*', 1, false, multiply);
                 times = strong_times;
                 return strong_times;
             }
@@ -111,7 +131,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
         case '/':
             if(divided_by.expired())
             {
-                auto strong_divided_by = make_shared<const binary_op>('/', 1, false, &divide);
+                auto strong_divided_by = make_shared<const binary_op>('/', 1, false, divide);
                 divided_by = strong_divided_by;
                 return strong_divided_by;
             }
@@ -120,7 +140,7 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
         case '^':
             if(to_power.expired())
             {
-                auto strong_to_power = make_shared<const binary_op>('^', 2, true, &exponentiate);
+                auto strong_to_power = make_shared<const binary_op>('^', 2, true, exponentiate);
                 to_power = strong_to_power;
                 return strong_to_power;
             }
@@ -133,6 +153,10 @@ shared_ptr<const binary_op> parse_binary_op(std::queue<char> &chars)
 
 shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
 {
+    static double (*negate)(double) = 
+      [](double argument)
+          { return -argument; };
+    
 	static weak_ptr<const unary_op> negative;
 	
     if(chars.empty()) return nullptr;
@@ -141,7 +165,7 @@ shared_ptr<const unary_op> parse_unary_op(std::queue<char> &chars)
     {
         if(negative.expired())
         {
-            auto strong_negative = make_shared<const unary_op>('-', 3, &negate);
+            auto strong_negative = make_shared<const unary_op>('-', 3, negate);
             negative = strong_negative;
             return strong_negative;
         }
